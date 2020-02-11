@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
-using CommandLine;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.Hosting;
@@ -12,73 +12,47 @@ namespace control_server
 {
     public class Program
     {
-        public class Options
-        {
-            [Option('i', "i2c", Required = false, HelpText = "i2c mode")]
-            public bool FlagI2C { get; set; }
-
-            [Option('b', "bus", Required = false, Default = 1, HelpText = "i2c bus id")]
-            public int BusId { get; set; }
-
-            [Option('d', "devId", Required = false, Default = (int)0x40, HelpText = "i2c dev id")]
-            public int DevId { get; set; }
-
-            [Option('a', "addr", Required = false, Default = (int)0xfe, HelpText = "i2c register addr")]
-            public int Addr { get; set; }
-
-            [Option('c', "readLength", Required = false, Default = 2, HelpText = "i2c read legth")]
-            public int ReadLength { get; set; }
-
-            [Option('g', "gpio", Required = false, HelpText = "gpio mode")]
-            public bool FlagGPIO { get; set; }
-
-            [Option('p', "pin", Required = false, Default = 0, HelpText = "gpio pin")]
-            public int GPIOPin { get; set; }
-
-            [Option('s', "state", Required = false, Default = -1, HelpText = "gpio pin state")]
-            public int State { get; set; }
-        }
-
         public static void Main(string[] args)
         {
-            Parser.Default.ParseArguments<Options>(args)
-            .WithParsed<Options>(o => RunWithOpts(o, args))
-            .WithNotParsed<Options>(e => ErrorHandle(e));
-        }
+            System.Console.WriteLine($"{args.Length}: {string.Join(" ", args)}");
 
-        static void ErrorHandle(IEnumerable<Error> e)
-        {
-            foreach (var item in e)
-                System.Console.WriteLine(item.ToString(), null);
-        }
-
-        static void RunWithOpts(Options o, string[] args)
-        {
-            if (o.FlagGPIO || o.FlagI2C)
+            if (args.Length == 0)
             {
                 CreateHostBuilder(args).Build().Run();
                 return;
             }
-
-            if (o.FlagI2C)
+            else if (args.Length == 2 && args[0].Equals("gpio") && int.TryParse(args[1], out _))
             {
-                var resp = common.I2CController.Read(o.BusId, o.DevId, o.Addr, o.ReadLength);
-                System.Console.WriteLine($"read: {resp}");
+                var resp = common.GPIOController.ReadGPIO(int.Parse(args[1]));
+                System.Console.WriteLine($"GPIO {int.Parse(args[1])}: {resp}");
             }
-
-            if (o.FlagGPIO)
+            else if (args.Length == 3 && args[0].Equals("gpio") && int.TryParse(args[1], out _) && bool.TryParse(args[2], out _))
             {
-                if (o.State == -1)
-                {
-                    var resp = common.GPIOController.ReadGPIO(o.GPIOPin);
-                    System.Console.WriteLine($"GPIO: {resp}");
-                }
-                else
-                {
-                    common.GPIOController.SetGPIO(o.GPIOPin, o.State > 0);
-                    System.Console.WriteLine($"GPIO: {o.State > 0}");
-                }
+                common.GPIOController.SetGPIO(int.Parse(args[1]), bool.Parse(args[2]));
+                System.Console.WriteLine($"Set GPIO: {int.Parse(args[1])} => {bool.Parse(args[2])}");
             }
+            else if (args.Length == 5 &&
+                    args[0].Equals("i2c") &&
+                    int.TryParse(args[1], out _) &&
+                    int.TryParse(args[2], out _) &&
+                    int.TryParse(args[3], out _) &&
+                    int.TryParse(args[4], out _))
+            {
+                var resp = common.I2CController.Read(int.Parse(args[1]), int.Parse(args[2]), int.Parse(args[3]), int.Parse(args[4]));
+                System.Console.WriteLine($"read: {ByteArrayToString(resp)}");
+            }
+            else
+            {
+                System.Console.WriteLine("Wrong input parameters. Please check");
+            }
+        }
+
+        public static string ByteArrayToString(byte[] ba)
+        {
+            StringBuilder hex = new StringBuilder(ba.Length * 2);
+            foreach (byte b in ba)
+                hex.AppendFormat("{0:x2}", b);
+            return hex.ToString();
         }
 
         // Additional configuration is required to successfully run gRPC on macOS.
