@@ -10,7 +10,7 @@
   
   <ItemGroup>
     <PackageReference Include="System.Device.Gpio" Version="1.0.0" />
-    <PackageReference Include="Google.Protobuf" Version="3.8.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.15.0" />
     <PackageReference Include="Grpc" Version="2.23.0" />
     <PackageReference Include="Grpc.Tools" Version="2.23.0" PrivateAssets="All" />
   </ItemGroup>
